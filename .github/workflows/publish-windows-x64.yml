@@ -1,0 +1,32 @@
+name: Publish Native AOT Build
+
+on:
+  push:
+    branches: [ main ]  # 你可以改成任何你想触发的分支
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest  # 你也可以用 ubuntu-latest，但Native AOT在不同平台构建出来的是不同格式
+    name: Build Native AOT App
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.x'  # 确保你用的是支持 Native AOT 的版本（.NET 7+）
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Publish Native AOT
+        run: dotnet publish -c Release -r win-x64 -o ./publish
+
+      - name: Upload Native AOT Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-aot-build
+          path: ./publish
