@@ -92,7 +92,7 @@ namespace EchoLiveNativeServer
             });
             //_app.UseRequestLocalization(localizationOptions);
             //_app.MapGet("/hello", () => "Hello, HTTP!");
-            _app.Run($"http://localhost:{port}");
+            _app.Run($"http://0.0.0.0:{port}");
         }
 
         [UnmanagedCallersOnly(EntryPoint = "StopService")]
