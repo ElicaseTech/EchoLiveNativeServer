@@ -125,5 +125,92 @@ namespace EchoLiveNativeServer
         {
             Console.WriteLine("Loading config...");
         }
+
+        // C# Only
+        public static void StartWebServer(int port)
+        {
+            var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+            {
+                WebRootPath = "assets"
+            });
+            builder.WebHost.UseSetting(WebHostDefaults.PreventHostingStartupKey, "true");
+            builder.Services.AddSingleton<WebSocketManagerService>();
+            _app = builder.Build();
+            _app.UseWebSockets();
+            _app.UseStaticFiles();
+            _wsService = _app.Services.GetRequiredService<WebSocketManagerService>();
+
+            _app.MapGet("/", async context =>
+            {
+                await context.Response.WriteAsync("Echo-Live Server is Running.....");
+            });
+
+            _app.Map("/ws", async context =>
+            {
+                if (!context.WebSockets.IsWebSocketRequest)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsync("WebSocket 请求无效");
+                    return;
+                }
+
+                var socket = await context.WebSockets.AcceptWebSocketAsync();
+                var wsHandler = new EchoWebSocketHandler(_wsService);
+                await wsHandler.HandleAsync(socket);
+            });
+
+            _app.MapGet("/echo-live/config.js", async context =>
+            {
+                var filePath = Path.Combine(_app.Environment.WebRootPath, "echo-live/config.js");
+                if (!File.Exists(filePath))
+                {
+                    context.Response.StatusCode = 404;
+                    await context.Response.WriteAsync("File not found");
+                    return;
+                }
+                var jsContent = await File.ReadAllTextAsync(filePath);
+                jsContent += @"
+ 
+ function InjectConfig() {
+     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+     const hostname = window.location.hostname;
+     const port = window.location.port;
+     const wsAddress = `${protocol}//${hostname}:${port}/ws`;
+     config.echolive.broadcast.enable = true;
+     config.echolive.broadcast.websocket_enable = true;
+     config.echolive.broadcast.websocket_url = wsAddress;
+     config.editor.websocket.enable = true;
+     config.editor.websocket.url = wsAddress;
+     config.editor.websocket.auto_url = false;
+ }
+ InjectConfig();";
+
+                context.Response.ContentType = "application/javascript";
+                await context.Response.WriteAsync(jsContent, Encoding.UTF8);
+            });
+            //_app.UseRequestLocalization(localizationOptions);
+            //_app.MapGet("/hello", () => "Hello, HTTP!");
+            _app.Run($"http://0.0.0.0:{port}");
+        }
+
+        public static void StopWebServer()
+        {
+            Console.WriteLine("Stopping server...");
+            _app.StopAsync().GetAwaiter().GetResult();
+            _app.DisposeAsync().GetAwaiter().GetResult();
+            _app = null;
+            Console.WriteLine("Server stopped.");
+        }
+
+        public static void sendJsonMsg(string jsonstr)
+        {
+            if (_wsService == null)
+            {
+                return;
+            }
+
+            // Fire-and-forget
+            _ = _wsService.BroadcastAsync(jsonstr);
+        }
     }
 }

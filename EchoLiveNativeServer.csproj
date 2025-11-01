@@ -10,6 +10,10 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <StripSymbols>true</StripSymbols>
     <Nullable>enable</Nullable>
+    <Version>1.0.2</Version>
+    <Title>Echo Live Native Server</Title>
+    <Authors>AuraElicase</Authors>
+    <Company>ElicaseTech</Company>
   </PropertyGroup>
 
   <ItemGroup>
